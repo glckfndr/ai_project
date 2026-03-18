@@ -27,11 +27,15 @@ checkEnvironment();
  */
 const messages = [
   {
-    role: "user",
-    content: `Suggest some gifts for someone who loves hiphop music.
-    Make these suggestions thoughtful and practical. Your response
-    must be under 100 words. Skip intros and conclusions.
+    role: "system",
+    content: `Make these suggestions thoughtful and practical.
+    Your response must be under 100 words.
+    Skip intros and conclusions.
     Only output gift suggestions.`,
+  },
+  {
+    role: "user",
+    content: `Suggest some gifts for someone who loves hiphop music.`,
   },
 ];
 
