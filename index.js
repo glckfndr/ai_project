@@ -1,6 +1,7 @@
-import OpenAI from "openai";
 import { checkEnvironment } from "./utils.js";
+import OpenAI from "openai";
 
+// Initialize the OpenAI client using environment variables
 const openai = new OpenAI({
   apiKey: process.env.AI_KEY,
   baseURL: process.env.AI_URL,
@@ -9,38 +10,57 @@ const openai = new OpenAI({
 
 checkEnvironment();
 
-const prompt = "Suggest some gifts for someone who loves hiphop music";
+/**
+ * Challenge: Follow-Up Gift-Genie Conversation
+ *
+ * The model has no memory!
+ * We simulate a conversation history by rebuilding
+ * state manually.
+ *
+ * 1. Store the AI model's first response in the messages array
+ * 2. Add a second user message asking for the suggestions to be
+      more budget friendly and under $40.
+ * 3. Send a chat completions request with the messages array again
+ * 4. Log the final response's content
+ *
+ * 💡 Check the hints folder for more guidance!
+ */
+const messages = [
+  {
+    role: "user",
+    content: `Suggest some gifts for someone who loves hiphop music.
+    Make these suggestions thoughtful and practical. Your response
+    must be under 100 words. Skip intros and conclusions.
+    Only output gift suggestions.`,
+  },
+];
 
-console.log("Prompt:", prompt);
-console.log("Making AI request...");
+const firstResponse = await openai.chat.completions.create({
+  model: process.env.AI_MODEL,
+  messages,
+});
 
-try {
-  const response = await openai.chat.completions.create({
-    model: process.env.AI_MODEL,
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-  });
+// Extract the model's generated text from the response
+console.log(firstResponse.choices[0].message.content);
 
-  console.log("AI response:");
-  console.log(response.choices[0].message.content);
-} catch (error) {
-  if (error.status === 401 || error.status === 403) {
-    console.error(
-      "Authentication error: Check your AI_KEY and make sure it’s valid.",
-    );
-  } else if (error.status === 429) {
-    console.error(
-      "Rate limit or quota error (429): Your key is valid, but requests are temporarily blocked or usage limit is reached.",
-    );
-  } else if (error.status >= 500) {
-    console.error(
-      "AI provider error: Something went wrong on the provider side. Try again shortly.",
-    );
-  } else {
-    console.error("Unexpected error:", error.message || error);
-  }
-}
+const firstAssistantMessage = firstResponse.choices[0].message;
+messages.push(firstAssistantMessage);
+
+messages.push({
+  role: "user",
+  content: "More budget friendly. Less than $40.",
+});
+
+// Send second chat completions request with extended messages array
+const secondResponse = await openai.chat.completions.create({
+  model: process.env.AI_MODEL,
+  messages,
+});
+
+console.log("Budget friendly suggestions:");
+console.log(secondResponse.choices[0].message.content);
+
+// - Noise-cancelling wireless over-ear headphones - A beginner-friendly vinyl turntable with starter records - Curated hip-hop vinyl box set - Tickets to a hip-hop concert or festival - Portable Bluetooth speaker - USB condenser microphone for home recording - Beat-making starter kit with MIDI controller - Hip-hop lyric/history book - Artist-themed hoodie or cap - Vinyl record cleaning kit
+
+// Budget friendly suggestions:
+// - Colored 7" hip-hop vinyl singles - Vinyl cleaning kit (carbon fiber brush) - Pack of inner/outer record sleeves - Hip-hop lyric/history pocket book - Hip-hop enamel pins or patches set - Poster or mini print of iconic album art - Hip-hop-themed tee or socks - Portable Bluetooth speaker - Cassette mixtapes from indie artists - USB microphone pop filter and mic stand clamp
