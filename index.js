@@ -28,42 +28,28 @@ function start() {
   giftForm.addEventListener("submit", handleGiftRequest);
 }
 
-/**
- * Challenge: Context-Sensitive Gift Suggestions
- *
- * So far, the Gift Genie ignores situational details.
- * Let's fix that.
- *
- * Your job is to:
- *
- * 1. Update the system message to react to contextual clues
- * 2. If a location or constraint is mentioned, adapt the ideas
- * 3. Add a short section under each gift that guides the user
- *    on how to get the gift in that constrained context.
- */
-
-// Initialize messages array with system prompt
+// Initialize messages array with system prompt (context-sensitive)
 const messages = [
   {
     role: "system",
-    content: `You are the Gift Genie!
-    Make your gift suggestions thoughtful and practical.
-    The user will describe the gift's recipient.
-    Your response must be in structured Markdown.
-    Each gift must:
-      - Have a clear heading
-      - A short explanation of why it would work
+    content: `You are the Gift Genie.
 
-    If the user mentions a location or a time constraint,
-    add another section under each gift that gives the user
-    a step by step guide on where and how they can get the gift.
+You generate gift ideas that feel thoughtful, specific, and genuinely useful.
+Your output must be in structured Markdown.
+Do not write introductions or conclusions.
+Start directly with the gift suggestions.
 
-    Skip intros and conclusions.
-    Only output gift suggestions.
+Each gift must:
+- Have a clear heading
+- Include a short explanation of why it works
 
-    End with a section with an H2 heading titled "Questions for you"
-    that contains follow-ups that would help improve the
-    gift suggestions`,
+If the user mentions a location, situation, or constraint,
+adapt the gift ideas and add another short section
+under each gift that guides the user to get the gift in that
+constrained context.
+
+After the gift ideas, include a section titled "Questions for you"
+with numbered clarifying questions that would help improve the recommendations.`,
   },
 ];
 
@@ -81,12 +67,28 @@ async function handleGiftRequest(e) {
   // Add user message to global messages array
   messages.push({ role: "user", content: userPrompt });
 
+  /**
+   * Exploratory Challenge: top_p
+   *
+   * Run the same prompt with:
+   * - top_p: 1
+   * - top_p: 0.9
+   * - top_p: 0.5
+   *
+   * Observe:
+   * - How much variation you get
+   * - Whether responses feel narrower or broader
+   * - How creativity changes compared to temperature
+   */
+
   try {
     // Enable streaming in the chat completions request
     const stream = await openai.chat.completions.create({
-      model: process.env.AI_MODEL,
+      model: "gpt-4o-mini",
       messages,
       stream: true,
+      // temperature: 0
+      top_p: 1,
     });
 
     // Show output container immediately for streaming feedback
