@@ -22,19 +22,24 @@ const giftForm = document.getElementById("gift-form");
 const userInput = document.getElementById("user-input");
 const outputContent = document.getElementById("output-content");
 
+function start() {
+  // Setup UI event listeners
+  userInput.addEventListener("input", () => autoResizeTextarea(userInput));
+  giftForm.addEventListener("submit", handleGiftRequest);
+}
+
 /**
- * Challenge: Enforcing Structure and Follow-Ups
+ * Challenge: Context-Sensitive Gift Suggestions
  *
- * The current gift suggestions are decent, but inconsistent.
+ * So far, the Gift Genie ignores situational details.
+ * Let's fix that.
  *
  * Your job is to:
  *
- * 1. Update the system message to enforce structure
- * 2. Require clear headings for each gift
- * 3. Require a short explanation for why each gift works
- * 4. End with a "Questions for you" section with follow-up
- *    questions that would help improve the recommendations
- *
+ * 1. Update the system message to react to contextual clues
+ * 2. If a location or constraint is mentioned, adapt the ideas
+ * 3. Add a short section under each gift that guides the user
+ *    on how to get the gift in that constrained context.
  */
 
 // Initialize messages array with system prompt
@@ -49,6 +54,10 @@ const messages = [
       - Have a clear heading
       - A short explanation of why it would work
 
+    If the user mentions a location or a time constraint,
+    add another section under each gift that gives the user
+    a step by step guide on where and how they can get the gift.
+
     Skip intros and conclusions.
     Only output gift suggestions.
 
@@ -57,12 +66,6 @@ const messages = [
     gift suggestions`,
   },
 ];
-
-function start() {
-  // Setup UI event listeners
-  userInput.addEventListener("input", () => autoResizeTextarea(userInput));
-  giftForm.addEventListener("submit", handleGiftRequest);
-}
 
 async function handleGiftRequest(e) {
   // Prevent default form submission
@@ -78,59 +81,42 @@ async function handleGiftRequest(e) {
   // Add user message to global messages array
   messages.push({ role: "user", content: userPrompt });
 
-  /**
-   * Challenge: Stream Gift Genie Responses
-   *
-   * You're starting with:
-   * - A working Gift Genie app from the previous lesson
-   * - A non-streaming chat completion request
-   *
-   * Your task:
-   *
-   * 1. Enable streaming by adding stream: true to the request
-   * 2. Loop over the stream using for await...of syntax
-   * 3. Extract content from each chunk
-   * 4. Accumulate streamed text chunks into a single string
-   * 5. Convert that accumulated Markdown into HTML
-   * 6. Sanitize the HTML
-   * 7. Render it progressively as the stream updates
-   *
-   * 💡 Check the hints folder for additional guidance
-   */
-
   try {
-    // Send a chat completions request and await its response
+    // Enable streaming in the chat completions request
     const stream = await openai.chat.completions.create({
       model: process.env.AI_MODEL,
       messages,
       stream: true,
     });
 
-    let giftSuggestions = "";
-
     // Show output container immediately for streaming feedback
     showStream();
 
+    // Accumulate the streamed response
+    let giftSuggestions = "";
+
+    // Iterate over streamed chunks as they arrive
     for await (const chunk of stream) {
-      const chunkContent = chunk.choices[0].delta.content;
+      const chunkContent = chunk.choices[0]?.delta?.content;
+      if (!chunkContent) continue;
+
+      // Append to accumulated response
       giftSuggestions += chunkContent;
 
-      // Convert Markdown to HTML
+      // Convert Markdown to HTML progressively
       const html = marked.parse(giftSuggestions);
 
-      // Sanitize the HTML
+      // Sanitize the HTML to prevent XSS attacks
       const safeHTML = DOMPurify.sanitize(html);
 
-      // Display the sanitized HTML
+      // Render progressively
       outputContent.innerHTML = safeHTML;
     }
 
-    // Extract gift suggestions from the assistant message's content
-    // const giftSuggestions = response.choices[0].message.content;
     console.log(giftSuggestions);
-  } catch (err) {
+  } catch (error) {
     // Log the error for debugging
-    console.error(err);
+    console.error(error);
 
     // Display friendly error message
     outputContent.textContent =
