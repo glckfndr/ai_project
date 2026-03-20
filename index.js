@@ -22,6 +22,21 @@ const giftForm = document.getElementById("gift-form");
 const userInput = document.getElementById("user-input");
 const outputContent = document.getElementById("output-content");
 
+/**
+ * Challenge: Enforcing Structure and Follow-Ups
+ *
+ * The current gift suggestions are decent, but inconsistent.
+ *
+ * Your job is to:
+ *
+ * 1. Update the system message to enforce structure
+ * 2. Require clear headings for each gift
+ * 3. Require a short explanation for why each gift works
+ * 4. End with a "Questions for you" section with follow-up
+ *    questions that would help improve the recommendations
+ *
+ */
+
 // Initialize messages array with system prompt
 const messages = [
   {
@@ -29,9 +44,17 @@ const messages = [
     content: `You are the Gift Genie!
     Make your gift suggestions thoughtful and practical.
     The user will describe the gift's recipient.
-    Your response must be 1000 words.
+    Your response must be in structured Markdown.
+    Each gift must:
+      - Have a clear heading
+      - A short explanation of why it would work
+
     Skip intros and conclusions.
-    Only output gift suggestions.`,
+    Only output gift suggestions.
+
+    End with a section with an H2 heading titled "Questions for you"
+    that contains follow-ups that would help improve the
+    gift suggestions`,
   },
 ];
 
@@ -80,17 +103,17 @@ async function handleGiftRequest(e) {
     const stream = await openai.chat.completions.create({
       model: process.env.AI_MODEL,
       messages,
-      stream: true
+      stream: true,
     });
 
-    let giftSuggestions = ""
+    let giftSuggestions = "";
 
     // Show output container immediately for streaming feedback
     showStream();
 
     for await (const chunk of stream) {
-      const chunkContent = chunk.choices[0].delta.content
-      giftSuggestions += chunkContent
+      const chunkContent = chunk.choices[0].delta.content;
+      giftSuggestions += chunkContent;
 
       // Convert Markdown to HTML
       const html = marked.parse(giftSuggestions);
@@ -105,8 +128,6 @@ async function handleGiftRequest(e) {
     // Extract gift suggestions from the assistant message's content
     // const giftSuggestions = response.choices[0].message.content;
     console.log(giftSuggestions);
-
-
   } catch (err) {
     // Log the error for debugging
     console.error(err);
