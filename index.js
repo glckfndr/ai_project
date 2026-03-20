@@ -26,6 +26,7 @@ const messages = [
     role: "system",
     content: `You are the Gift Genie!
     Make your gift suggestions thoughtful and practical.
+    The user will describe the gift's recipient.
     Your response must be under 100 words.
     Skip intros and conclusions.
     Only output gift suggestions.`,
@@ -40,43 +41,48 @@ async function handleGiftRequest(e) {
   const userPrompt = userInput.value.trim();
   if (!userPrompt) return;
 
-  /**
-   * Challenge: Adding AI to the Gift Genie UI
-   *
-   * The UI is wired up.
-   * The loading state is ready.
-   * But no AI request happens yet.
-   *
-   * Your task:
-   *
-   * 1. Add a user message to the messages array
-   * 2. Send a chat completions request
-   * 3. Extract the assistant’s response
-   * 4. Render it inside #output-content
-   *
-   * 💡 Check the hints folder for more guidance!
-   */
-
   // Set loading state
   setLoading(true);
 
-  messages.push({
-    role: "user",
-    content: userPrompt,
-  });
+  // Add user message to global messages array
+  messages.push({ role: "user", content: userPrompt });
 
-  const response = await openai.chat.completions.create({
-    model: process.env.AI_MODEL,
-    messages,
-  });
+  /**
+   * Challenge: Basic Error Handling
+   *
+   * Right now, if the AI request fails,
+   * the app will silently break.
+   *
+   * Your task:
+   *
+   * 1. Wrap the AI request in a try/catch block
+   * 2. If an error occurs:
+   *    - Log the error to the console
+   *    - Show a friendly message in the UI
+   * 3. Ensure loading always stops
+   *
+   * 💡 Check the hints folder for additional guidance!
+   */
 
-  console.log(response);
-  const giftSuggestions = response.choices[0].message.content;
+  // Send a chat completions request and await its response
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5-nano",
+      messages,
+    });
+    // Extract gift suggestions from the assistant message's content
+    const giftSuggestions = response.choices[0].message.content;
+    console.log(giftSuggestions);
 
-  outputContent.textContent = giftSuggestions;
-
-  // Clear loading state
-  setLoading(false);
+    // Display the gift suggestions
+    outputContent.textContent = giftSuggestions;
+  } catch (err) {
+    outputContent.textContent = "Request to AI failed. Please try again!";
+    console.log(err.message);
+  } finally {
+    // Clear loading state
+    setLoading(false);
+  }
 }
 
 start();
