@@ -1,7 +1,12 @@
 import OpenAI from "openai";
-import { autoResizeTextarea, checkEnvironment, setLoading } from "./utils.js";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import {
+  checkEnvironment,
+  autoResizeTextarea,
+  setLoading,
+  showStream,
+} from "./utils.js";
 
 checkEnvironment();
 
@@ -17,12 +22,6 @@ const giftForm = document.getElementById("gift-form");
 const userInput = document.getElementById("user-input");
 const outputContent = document.getElementById("output-content");
 
-function start() {
-  // Setup UI event listeners
-  userInput.addEventListener("input", () => autoResizeTextarea(userInput));
-  giftForm.addEventListener("submit", handleGiftRequest);
-}
-
 // Initialize messages array with system prompt
 const messages = [
   {
@@ -30,11 +29,17 @@ const messages = [
     content: `You are the Gift Genie!
     Make your gift suggestions thoughtful and practical.
     The user will describe the gift's recipient.
-    Your response must be under 100 words.
+    Your response must be 1000 words.
     Skip intros and conclusions.
     Only output gift suggestions.`,
   },
 ];
+
+function start() {
+  // Setup UI event listeners
+  userInput.addEventListener("input", () => autoResizeTextarea(userInput));
+  giftForm.addEventListener("submit", handleGiftRequest);
+}
 
 async function handleGiftRequest(e) {
   // Prevent default form submission
@@ -44,54 +49,73 @@ async function handleGiftRequest(e) {
   const userPrompt = userInput.value.trim();
   if (!userPrompt) return;
 
-  // Set loading state
+  // Set loading state (hides output, animates lamp)
   setLoading(true);
 
   // Add user message to global messages array
   messages.push({ role: "user", content: userPrompt });
 
+  /**
+   * Challenge: Stream Gift Genie Responses
+   *
+   * You're starting with:
+   * - A working Gift Genie app from the previous lesson
+   * - A non-streaming chat completion request
+   *
+   * Your task:
+   *
+   * 1. Enable streaming by adding stream: true to the request
+   * 2. Loop over the stream using for await...of syntax
+   * 3. Extract content from each chunk
+   * 4. Accumulate streamed text chunks into a single string
+   * 5. Convert that accumulated Markdown into HTML
+   * 6. Sanitize the HTML
+   * 7. Render it progressively as the stream updates
+   *
+   * 💡 Check the hints folder for additional guidance
+   */
+
   try {
     // Send a chat completions request and await its response
-    const response = await openai.chat.completions.create({
+    const stream = await openai.chat.completions.create({
       model: process.env.AI_MODEL,
       messages,
+      stream: true
     });
 
+    let giftSuggestions = ""
+
+    // Show output container immediately for streaming feedback
+    showStream();
+
+    for await (const chunk of stream) {
+      const chunkContent = chunk.choices[0].delta.content
+      giftSuggestions += chunkContent
+
+      // Convert Markdown to HTML
+      const html = marked.parse(giftSuggestions);
+
+      // Sanitize the HTML
+      const safeHTML = DOMPurify.sanitize(html);
+
+      // Display the sanitized HTML
+      outputContent.innerHTML = safeHTML;
+    }
+
     // Extract gift suggestions from the assistant message's content
-    const giftSuggestions = response.choices[0].message.content;
+    // const giftSuggestions = response.choices[0].message.content;
     console.log(giftSuggestions);
 
-    /**
-     * Challenge: Sanitize AI Output Before Rendering
-     *
-     * AI output must be treated as untrusted input.
-     *
-     * Your task:
-     *
-     * 1. Sanitize the rendered HTML before inserting it into the DOM
-     * 2. Ensure no scripts or unsafe HTML can run
-     *
-     *
-     * We’ll use DOMPurify for sanitization.
-     *
-     * 💡 Check the hints folder for more guidance!
-     */
 
-    const html = marked.parse(giftSuggestions);
-
-    const safeHTML = DOMPurify.sanitize(html);
-
-    // Display the gift suggestions
-    outputContent.innerHTML = safeHTML;
-  } catch (error) {
+  } catch (err) {
     // Log the error for debugging
-    console.error(error);
+    console.error(err);
 
-    // Show a friendly error message to the user
+    // Display friendly error message
     outputContent.textContent =
       "Sorry, I can't access what I need right now. Please try again in a bit.";
   } finally {
-    // Always clear loading state, whether request succeeds or fails
+    // Always clear loading state (shows output, resets lamp)
     setLoading(false);
   }
 }
